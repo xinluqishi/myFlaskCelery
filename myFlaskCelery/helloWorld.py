@@ -3,10 +3,14 @@ import sys
 from flask import Flask, make_response, redirect
 from flask import render_template
 from flask_bootstrap import Bootstrap
+from flask_moment import Moment
+from datetime import datetime
 
 
 app = Flask(__name__)
-bootstrap = Bootstrap(app)  #程序实例传入构造方法进行初始化
+# 程序实例传入构造方法进行初始化
+bootstrap = Bootstrap(app)
+moment = Moment(app)
 
 
 @app.route('/')
@@ -16,7 +20,7 @@ def home():
 
 @app.route('/index')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', current_time=datetime.utcnow())
 
 
 @app.route('/user/<name>')
