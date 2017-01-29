@@ -1,8 +1,8 @@
 # coding=utf-8
 import sys
-from flask import Flask, make_response, redirect
+from flask import Flask, make_response
 from flask import render_template
-from flask import session, redirect, url_for
+from flask import session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from datetime import datetime
@@ -32,8 +32,12 @@ def user():
     # name = None
     form = NameForm()
     if form.validate_on_submit():
-        session['name'] = form.name.data
+        # session['name'] = form.name.data
         # form.name.data = ''
+        old_name = session.get('name')
+        if old_name is not None and old_name != form.name.data:
+            flash('Looks like you have changed your name!')
+        session['name'] = form.name.data
         return redirect(url_for('user'))
     return render_template('user.html', form=form, name=session.get('name'))
 
