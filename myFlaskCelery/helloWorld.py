@@ -6,6 +6,7 @@ from flask import session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from flask_script import Shell, Manager
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import StringField, SubmitField
@@ -26,6 +27,7 @@ db = SQLAlchemy(app)
 # 程序实例传入构造方法进行初始化
 bootstrap = Bootstrap(app)
 moment = Moment(app)
+manager = Manager(app)
 
 
 @app.route('/')
@@ -45,12 +47,23 @@ def user():
     if form.validate_on_submit():
         # session['name'] = form.name.data
         # form.name.data = ''
-        old_name = session.get('name')
-        if old_name is not None and old_name != form.name.data:
-            flash('Looks like you have changed your name!')
+        # old_name = session.get('name')
+        # if old_name is not None and old_name != form.name.data:
+        #     flash('Looks like you have changed your name!')
+        # session['name'] = form.name.data
+        # return redirect(url_for('user'))
+        one_user = User.query.filter_by(user_name=form.name.data).first()
+        if one_user is None:
+            one_user = User(user_id=uuid.uuid4().urn[9:], user_name=form.name.data)
+            db.session.add(one_user)
+            session['known'] = False
+        else:
+            session['known'] = True
         session['name'] = form.name.data
+        form.name.data = ''
         return redirect(url_for('user'))
-    return render_template('user.html', form=form, name=session.get('name'))
+
+    return render_template('user.html', form=form, name=session.get('name'), known=session.get('known'))
 
 
 @app.route('/index_response')
@@ -88,8 +101,8 @@ def init_db():
     # print User.query.filter_by(role=user_role).all()
     # print str(User.query.filter_by(role=user_role).all())
 
-    user_role = Role.query.filter_by(role_name='Admin').first()
-    print user_role.role_name
+    one_user = User.query.filter_by(user_name='shikeyue').first()
+    print one_user.user_name
     return render_template('index.html', current_time=datetime.utcnow())
 
 
@@ -101,6 +114,11 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('500.html'), 500
+
+
+def make_shell_context():
+    return dict(app=app, db=db, User=User, Role=Role)
+manager.add_command("shell", Shell(make_context=make_shell_context))
 
 
 class NameForm(Form):
@@ -132,3 +150,4 @@ if __name__ == '__main__':
     app.run(debug=True)
     # db.create_all()
     # print "db create now!"
+    manager.run()
