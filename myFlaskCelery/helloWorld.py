@@ -1,17 +1,28 @@
 # coding=utf-8
-import sys
+import os
 from flask import Flask, make_response
 from flask import render_template
 from flask import session, redirect, url_for, flash
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import StringField, SubmitField
 from wtforms.validators import Required
+import uuid
+
+# basedir = os.path.abspath(os.path.dirname('/Users/shikeyue/Documents/pythonWorkspace/myFlaskCelery/myFlaskCelery'))
+basedir = os.path.abspath(os.path.dirname(__file__))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hard to guess string'
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root@localhost:3306/parking_car'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+
+db = SQLAlchemy(app)
 # 程序实例传入构造方法进行初始化
 bootstrap = Bootstrap(app)
 moment = Moment(app)
@@ -54,6 +65,34 @@ def index_redirect():
     return redirect('http://www.example.com')
 
 
+@app.route('/init_db')
+def init_db():
+    # db.create_all()
+    # print "db create now!"
+    # admin_role1 = Role(role_id='001', role_name='Admin1')
+    # mod_role = Role(role_id=uuid.uuid4().urn[9:], role_name='Moderator')
+    # user_role = Role(role_name='User')
+    #
+    # user_john = User(user_id=uuid.uuid4().urn[9:], user_name='john', role=admin_role)
+    # user_susan = User(user_id=uuid.uuid4().urn[9:], user_name='susan', role=user_role)
+    # user_david = User(user_id=uuid.uuid4().urn[9:], user_name='david', role=user_role)
+    #
+    # db.session.add_all([admin_role, mod_role, user_role, user_john, user_susan, user_david])
+    # db.session.add(admin_role1)
+    # db.session.commit()
+
+    # admin_role1.role_name = 'Administrator'
+    # db.session(admin_role1)
+    # db.session.commit()
+    # print Role.query.all()
+    # print User.query.filter_by(role=user_role).all()
+    # print str(User.query.filter_by(role=user_role).all())
+
+    user_role = Role.query.filter_by(role_name='Admin').first()
+    print user_role.role_name
+    return render_template('index.html', current_time=datetime.utcnow())
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
@@ -69,5 +108,27 @@ class NameForm(Form):
     submit = SubmitField('Submit')
 
 
+class Role(db.Model):
+    __tablename__ = 'roles'
+    role_id = db.Column(db.String(64), primary_key=True)
+    role_name = db.Column(db.String(64), unique=True)
+    users = db.relationship('User', backref='role')
+
+    def __repr__(self):
+        return '<Role %r>' % self.role_name
+
+
+class User(db.Model):
+    __tablename__ = 'users'
+    user_id = db.Column(db.String(64), primary_key=True)
+    user_name = db.Column(db.String(64), unique=True, index=True)
+    role_id = db.Column(db.String, db.ForeignKey('roles.role_id'))
+
+    def __repr__(self):
+        return '<User %r>' % self.user_name
+
+
 if __name__ == '__main__':
     app.run(debug=True)
+    # db.create_all()
+    # print "db create now!"
