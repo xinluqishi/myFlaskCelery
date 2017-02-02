@@ -1,17 +1,18 @@
 # coding=utf-8
-import os
+import os, uuid
 from flask import Flask, make_response
 from flask import render_template
-from flask import session, redirect, url_for, flash
+from flask import session, redirect, url_for
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
-from flask_script import Shell, Manager
-from datetime import datetime
 from flask_wtf import Form
+from flask_script import Shell, Manager
+from flask_migrate import Migrate, MigrateCommand
+from flask_mail import Mail, Message
+from datetime import datetime
 from wtforms import StringField, SubmitField
 from wtforms.validators import Required
-import uuid
 
 # basedir = os.path.abspath(os.path.dirname('/Users/shikeyue/Documents/pythonWorkspace/myFlaskCelery/myFlaskCelery'))
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -23,11 +24,24 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'da
 app.config['SQLALCHEMY_COMMIT_ON_TEARDOWN'] = True
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
+# configure the flask-mail function
+app.config['MAIL_SERVER'] = 'smtp.126.com'
+app.config['MAIL_PORT'] = 25
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MFC_MAIL_SUBJECT_PREFIX'] = '[MFC]'
+app.config['MFC_MAIL_SENDER'] = 'MFC Admin <xinluqishi@126.com>'
+app.config['MFC_ADMIN'] = os.environ.get('MFC_ADMIN')
+
 db = SQLAlchemy(app)
 # 程序实例传入构造方法进行初始化
 bootstrap = Bootstrap(app)
 moment = Moment(app)
 manager = Manager(app)
+migrate = Migrate(app, db)
+manager.add_command('db', MigrateCommand)
+mail = Mail(app)
 
 
 @app.route('/')
@@ -121,6 +135,14 @@ def make_shell_context():
 manager.add_command("shell", Shell(make_context=make_shell_context))
 
 
+def send_email(to, subject, template, **kwargs):
+    msg = Message(app.config['MFC_MAIL_SUBJECT_PREFIX'] + subject, sender=app.config['MFC_MAIL_SENDER'],
+                  recipients=[to])
+    msg.body = render_template(template + '.txt', **kwargs)
+    msg.html = render_template(template + '.html', **kwargs)
+    mail.send(msg)
+
+
 class NameForm(Form):
     name = StringField('What is your name?', validators=[Required()])  # Should use DataRequired in WTF3.0 now it's 2.1
     submit = SubmitField('Submit')
@@ -147,6 +169,8 @@ class User(db.Model):
 
 
 if __name__ == '__main__':
+    # print os.environ.get('M2_HOME')
+    # print basedir
     app.run(debug=True)
     # db.create_all()
     # print "db create now!"
